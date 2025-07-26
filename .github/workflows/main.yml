@@ -4,38 +4,35 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '*/30 * * * *'  # Relance toutes les 30 minutes pour rester actif
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
+      - name: ⬇️ Checkout du code
+        uses: actions/checkout@v3
+
+      - name: 🐍 Installer Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Install tmux for process management
-        run: sudo apt-get install -y tmux
-      - name: Run bot in tmux session
+
+      - name: 📦 Installer les dépendances
         run: |
-          SESSION_NAME="telegram_bot"
-          # Kill any existing session
-          tmux kill-session -t $SESSION_NAME 2>/dev/null || true
-          # Create new session and run the bot
-          tmux new-session -d -s $SESSION_NAME "python hosting_bot5.py"
-          # Keep checking if the bot is running
+          pip install -r requirements.txt
+
+      - name: 🚀 Lancer le bot avec redémarrage automatique
+        run: |
+          echo '#!/bin/bash
           while true; do
-            if ! tmux has-session -t $SESSION_NAME 2>/dev/null; then
-              echo "Bot session not found. Restarting..."
-              tmux new-session -d -s $SESSION_NAME "python hosting_bot5.py"
-            else
-              if ! tmux send-keys -t $SESSION_NAME C-m 2>/dev/null; then
-                echo "Bot session dead. Restarting..."
-                tmux kill-session -t $SESSION_NAME 2>/dev/null || true
-                tmux new-session -d -s $SESSION_NAME "python hosting_bot5.py"
-              fi
-            fi
-            sleep 30
-          done
+            echo "🔄 Démarrage du bot..."
+            python3 hosting_bot5.py
+            echo "❌ Le bot s'est arrêté. Redémarrage dans 10 secondes..."
+            sleep 10
+          done' > launcher.sh
+
+          chmod +x launcher.sh
+          ./launcher.sh
